@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { calculateOutput } from "./robots";
+import { calculateOutput } from "./output-calculation/calculation";
 
 function App() {
   const [inputText, setInputText] = useState("");
-  const [output, setOutput] = useState<string[]>([]);
+  const [output, setOutput] = useState<string[] | null>(null);
 
   function handleInputTextChange(
     event: React.ChangeEvent<HTMLTextAreaElement>
@@ -13,29 +13,37 @@ function App() {
 
   function handleButtonClick() {
     setOutput(calculateOutput(inputText));
-    setInputText("");
   }
 
   return (
-    <div>
+    <main>
       <h1>Martian Robots</h1>
-      <label>Robot instructions (Input)</label>
+      <label htmlFor="input">Input</label>
       <textarea
         name="input"
+        id="input"
         value={inputText}
         onChange={handleInputTextChange}
       />
-      <button onClick={handleButtonClick}>Process instructions</button>
-      <p>Add robot instructions in the input box and click the button</p>
+      <button
+        type="button"
+        name="calculate-output"
+        onClick={handleButtonClick}
+        disabled={!inputText}
+      >
+        Get output
+      </button>
       {output && (
         <>
           <h2>Output</h2>
-          {output.map((text, i) => (
-            <p key={i}>{text}</p>
-          ))}
+          {output.length ? (
+            output.map((text, i) => <p key={i}>{text}</p>)
+          ) : (
+            <p>No output for the above text</p>
+          )}
         </>
       )}
-    </div>
+    </main>
   );
 }
 

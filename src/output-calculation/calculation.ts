@@ -11,31 +11,36 @@ import { isEven } from "./utils";
 
 const CARDINALS_CLOCKWISE: Direction[] = ["N", "E", "S", "W"];
 
-export function calculateOutput(rawInstructions: string) {
-  if (rawInstructions.length > MAX_INSTRUCTION_LENGTH) {
+export function calculateOutput(inputText: string) {
+  if (inputText.length > MAX_INSTRUCTION_LENGTH) {
     return [
       `Instructions must be less than ${MAX_INSTRUCTION_LENGTH} characters`,
     ];
   }
 
-  const inputLines = rawInstructions.trim().split("\n");
+  const { robotsInfo, world } = parseInput(inputText);
+
+  const output = calculateWorldOutput(robotsInfo, world);
+
+  return output;
+}
+
+function parseInput(inputText: string) {
+  const lines = inputText.trim().split("\n");
 
   const world: Coordinate = {
-    x: parseInt(inputLines[0].charAt(0)),
-    y: parseInt(inputLines[0].charAt(2)),
+    x: parseInt(lines[0].charAt(0)),
+    y: parseInt(lines[0].charAt(2)),
   };
-
-  const scents: Coordinate[] = [];
-
-  const outputs: string[] = [];
 
   const robotsInfo: RobotInfo[] = [];
 
-  const robotInfoLines = inputLines
+  const robotInfoLines = lines
     .slice(1) // removes the first line (the world information)
     .filter((line) => !!line); // removes the empty lines
 
   for (const [index, line] of robotInfoLines.entries()) {
+    // robots information is a pair of two lines. It skips the odd line (the instructions).
     if (isEven(index)) {
       robotsInfo.push({
         position: {
@@ -45,13 +50,28 @@ export function calculateOutput(rawInstructions: string) {
           },
           direction: line.charAt(4) as Direction,
         },
+        // it assumes the following line (odd) has the instructions
         instructions: robotInfoLines[index + 1].split("") as Instructions,
       });
     }
   }
 
+  return {
+    robotsInfo,
+    world,
+  };
+}
+
+function calculateWorldOutput(robotsInfo: RobotInfo[], world: Coordinate) {
+  const outputs: string[] = [];
+  const scents: Coordinate[] = [];
+
   for (const robotInfo of robotsInfo) {
-    const { lastPosition, lostAt } = calculateRobotOutput(robotInfo);
+    const { lastPosition, lostAt } = calculateSingleRobotOutput({
+      robotInfo,
+      world,
+      scents,
+    });
 
     if (lostAt) scents.push(lostAt);
 
@@ -63,55 +83,61 @@ export function calculateOutput(rawInstructions: string) {
   }
 
   return outputs;
+}
 
-  function calculateRobotOutput(robotInfo: RobotInfo) {
-    const positionTracker: Position[] = [robotInfo.position];
-    let lostAt: Coordinate | null = null;
+function calculateSingleRobotOutput({
+  robotInfo,
+  world,
+  scents,
+}: {
+  robotInfo: RobotInfo;
+  world: Coordinate;
+  scents: Coordinate[];
+}) {
+  let currentPosition: Position = robotInfo.position;
+  let lostAt: Coordinate | null = null;
 
-    for (const instruction of robotInfo.instructions) {
-      const currentPosition = positionTracker.at(-1)!;
+  for (const instruction of robotInfo.instructions) {
+    if (instruction === "F") {
+      const nextCoordinate = getNextCoordinate(currentPosition);
 
-      if (instruction === "F") {
-        const nextCoordinate = getNextCoordinate(currentPosition);
-
-        if (hasScent(nextCoordinate)) {
-          continue;
-        }
-
-        if (isOutsideOfTheWorld(nextCoordinate)) {
-          lostAt = nextCoordinate;
-          break;
-        }
-
-        positionTracker.push({
-          coordinate: nextCoordinate,
-          direction: currentPosition.direction,
-        });
-      } else {
-        positionTracker.push({
-          coordinate: currentPosition.coordinate,
-          direction: getNextDirection(currentPosition.direction, instruction),
-        });
+      if (hasScent(nextCoordinate, scents)) {
+        continue;
       }
-    }
 
-    return {
-      lastPosition: positionTracker.at(-1)!,
-      lostAt,
-    };
-
-    function isOutsideOfTheWorld(coordinate: Coordinate) {
-      if (coordinate.x > world.x || coordinate.y > world.y) return true;
-      return false;
-    }
-
-    function hasScent(coordinate: Coordinate) {
-      for (const scent of scents) {
-        if (scent.x === coordinate.x && scent.y === coordinate.y) return true;
-        return false;
+      if (isOutsideOfTheWorld(nextCoordinate, world)) {
+        lostAt = nextCoordinate;
+        break;
       }
+
+      currentPosition = {
+        coordinate: nextCoordinate,
+        direction: currentPosition.direction,
+      };
+    } else {
+      currentPosition = {
+        coordinate: currentPosition.coordinate,
+        direction: getNextDirection(currentPosition.direction, instruction),
+      };
     }
   }
+
+  return {
+    lastPosition: currentPosition,
+    lostAt,
+  };
+}
+
+function hasScent(coordinate: Coordinate, scents: Coordinate[]) {
+  for (const scent of scents) {
+    if (scent.x === coordinate.x && scent.y === coordinate.y) return true;
+    return false;
+  }
+}
+
+function isOutsideOfTheWorld(coordinate: Coordinate, world: Coordinate) {
+  if (coordinate.x > world.x || coordinate.y > world.y) return true;
+  return false;
 }
 
 function getNextDirection(
