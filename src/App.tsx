@@ -3,7 +3,7 @@ import { calculateOutput } from "./robots";
 
 function App() {
   const [inputText, setInputText] = useState("");
-  const [outputText, setOutputText] = useState("");
+  const [output, setOutput] = useState<string[]>([]);
 
   function handleInputTextChange(
     event: React.ChangeEvent<HTMLTextAreaElement>
@@ -12,8 +12,8 @@ function App() {
   }
 
   function handleButtonClick() {
+    setOutput(calculateOutput(inputText));
     setInputText("");
-    setOutputText(calculateOutput(inputText));
   }
 
   return (
@@ -27,10 +27,12 @@ function App() {
       />
       <button onClick={handleButtonClick}>Process instructions</button>
       <p>Add robot instructions in the input box and click the button</p>
-      {outputText && (
+      {output && (
         <>
           <h2>Output</h2>
-          <p>{outputText}</p>
+          {output.map((text, i) => (
+            <p key={i}>{text}</p>
+          ))}
         </>
       )}
     </div>
